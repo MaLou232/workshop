@@ -404,6 +404,19 @@
       [130, 55, 30, 18, 22, 0.51, 0.73],
       [100, 78, 36, 18, 22, 0.53, 0.75],
       [120, 78, 36, 18, 22, 0.53, 0.75],
+
+      // ── Upper dome arc fill (closing the red-line gap) ──
+      [110,  5, 26, 10, 30, 0.44, 0.65],  // very top center
+      [88,  14, 20, 12, 26, 0.45, 0.66],  // top left of center
+      [132, 14, 20, 12, 26, 0.45, 0.66],  // top right of center
+      [64,  18, 20, 14, 26, 0.45, 0.67],  // upper-left inner arc
+      [156, 18, 20, 14, 26, 0.45, 0.67],  // upper-right inner arc
+      [44,  32, 20, 16, 24, 0.46, 0.68],  // upper-left outer arc
+      [176, 32, 20, 16, 24, 0.46, 0.68],  // upper-right outer arc
+      [28,  50, 18, 16, 20, 0.47, 0.69],  // far-left upper fill
+      [192, 50, 18, 16, 20, 0.47, 0.69],  // far-right upper fill
+      [56,  38, 16, 14, 20, 0.46, 0.68],  // left arc shoulder
+      [164, 38, 16, 14, 20, 0.46, 0.68],  // right arc shoulder
     ];
 
     regions.forEach(([cx, cy, rx, ry, count, minT, maxT]) => {
@@ -467,6 +480,11 @@
   function showPuffin() {
     clearPuffinTimeouts();
     playAudio('snd-bird');
+    // Stop bird sound after 5 s
+    puffinTimeouts.push(setTimeout(() => {
+      const b = document.getElementById('snd-bird');
+      if (b) { b.pause(); b.currentTime = 0; }
+    }, 5000));
 
     const p = el.puffin;
     p.classList.remove('hidden');
@@ -505,7 +523,35 @@
     }, 700);
   }
 
+  function playKissSound() {
+    try {
+      const ac = mkCtx(), now = ac.currentTime;
+      // Lip-smack: short burst of bandpass noise
+      const len = Math.floor(ac.sampleRate * 0.09);
+      const buf = ac.createBuffer(1, len, ac.sampleRate);
+      const d   = buf.getChannelData(0);
+      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.sin(Math.PI * i / len);
+      const src  = ac.createBufferSource(); src.buffer = buf;
+      const bp   = ac.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 900; bp.Q.value = 1.4;
+      const ng   = ac.createGain(); ng.gain.setValueAtTime(0.55, now); ng.gain.exponentialRampToValueAtTime(0.001, now + 0.12);
+      src.connect(bp); bp.connect(ng); ng.connect(ac.destination);
+      src.start(now);
+      // "Mmwah" tone: soft sine rising then falling, ~1.2 s total
+      const osc  = ac.createOscillator(); osc.type = 'sine';
+      osc.frequency.setValueAtTime(380, now + 0.04);
+      osc.frequency.linearRampToValueAtTime(580, now + 0.28);
+      osc.frequency.linearRampToValueAtTime(340, now + 0.9);
+      const og   = ac.createGain();
+      og.gain.setValueAtTime(0, now + 0.04);
+      og.gain.linearRampToValueAtTime(0.18, now + 0.18);
+      og.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
+      osc.connect(og); og.connect(ac.destination);
+      osc.start(now + 0.04); osc.stop(now + 1.2);
+    } catch (e) {}
+  }
+
   function sendKiss() {
+    playKissSound();
     const h = el.kiss;
     h.classList.remove('hidden', 'flying');
     void h.offsetWidth;
