@@ -106,17 +106,29 @@
   };
 
   // =====================================================
-  // AUDIO
+  // AUDIO  – single shared AudioContext, unlocked on first gesture
   // =====================================================
 
-  function mkCtx() {
-    return new (window.AudioContext || window.webkitAudioContext)();
+  let _ac = null;
+
+  // Returns the shared AudioContext, creating it if needed.
+  // Must be called from within (or after) a user-gesture handler so the
+  // browser allows it to run – we call unlockAudio() on every button click.
+  function getAc() {
+    if (!_ac) {
+      _ac = new (window.AudioContext || window.webkitAudioContext)();
+    }
+    if (_ac.state === 'suspended') _ac.resume();
+    return _ac;
   }
+
+  // Call once from any button handler to unlock audio for the page session
+  function unlockAudio() { try { getAc(); } catch (e) {} }
 
   // Bell chime: timer end
   function playPing() {
     try {
-      const ac = mkCtx(), now = ac.currentTime;
+      const ac = getAc(), now = ac.currentTime;
       [[528, 0.5, 2.6], [1056, 0.22, 2.1]].forEach(([freq, vol, dur]) => {
         const osc  = ac.createOscillator();
         const gain = ac.createGain();
@@ -140,27 +152,25 @@
     } catch (e) {}
   }
 
-  // Play poop sound amplified (Web Audio gain boost since file is quiet)
-  let _poopCtx = null;
+  // Play poop sound via shared AudioContext with gain boost (file is quiet)
+  // Uses a one-time MediaElementSource wired into the shared context.
+  let _poopSrc = null;
   function playPoopAmplified() {
-    const audio = document.getElementById('snd-poop');
-    if (!audio) return;
     try {
-      if (!_poopCtx) {
-        _poopCtx = new (window.AudioContext || window.webkitAudioContext)();
-        const src  = _poopCtx.createMediaElementSource(audio);
-        const gain = _poopCtx.createGain();
+      const audio = document.getElementById('snd-poop');
+      if (!audio) return;
+      const ac = getAc();
+      if (!_poopSrc) {
+        _poopSrc = ac.createMediaElementSource(audio);
+        const gain = ac.createGain();
         gain.gain.value = 5.0;
-        src.connect(gain);
-        gain.connect(_poopCtx.destination);
+        _poopSrc.connect(gain);
+        gain.connect(ac.destination);
       }
-      if (_poopCtx.state === 'suspended') _poopCtx.resume();
       audio.currentTime = 0;
       audio.play().catch(() => {});
     } catch (e) {
-      // fallback without amplification
-      audio.currentTime = 0;
-      audio.play().catch(() => {});
+      playAudio('snd-poop');
     }
   }
 
@@ -525,7 +535,7 @@
 
   function playKissSound() {
     try {
-      const ac = mkCtx(), now = ac.currentTime;
+      const ac = getAc(), now = ac.currentTime;
       // Lip-smack: short burst of bandpass noise
       const len = Math.floor(ac.sampleRate * 0.09);
       const buf = ac.createBuffer(1, len, ac.sampleRate);
@@ -762,11 +772,12 @@
     renderBadges();
     el.sessionsDisp.textContent = player.completedSessions;
 
-    // Button listeners
-    el.startBtn.addEventListener('click', startTimer);
-    el.pauseBtn.addEventListener('click', pauseTimer);
-    el.resetBtn.addEventListener('click', resetTimer);
-    el.testSoundBtn.addEventListener('click', playPing);
+    // Button listeners – unlockAudio() on every click so the shared
+    // AudioContext is created/resumed within a genuine user gesture.
+    el.startBtn.addEventListener('click',    () => { unlockAudio(); startTimer(); });
+    el.pauseBtn.addEventListener('click',    () => { unlockAudio(); pauseTimer(); });
+    el.resetBtn.addEventListener('click',    () => { unlockAudio(); resetTimer(); });
+    el.testSoundBtn.addEventListener('click',() => { unlockAudio(); playPing();  });
 
     // Live countdown preview
     el.minutesInput.addEventListener('input', () => {
