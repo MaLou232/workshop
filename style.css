@@ -1,0 +1,418 @@
+/* =====================================================
+   CSS Custom Properties – Sanftes Gelb / Blau / Grün
+   ===================================================== */
+:root {
+  --bg:              #edf4ed;
+  --bg2:             #e0ecda;
+  --surface:         #ffffff;
+  --surface2:        #f4faf4;
+  --green:           #7ab87a;
+  --green-dark:      #58a058;
+  --green-light:     #a8d8a8;
+  --blue:            #7aaed6;
+  --blue-dark:       #4a88b8;
+  --blue-light:      #b0d0ec;
+  --yellow:          #e8d87a;
+  --yellow-dark:     #c0a828;
+  --yellow-light:    #f5ecb0;
+  --pink:            #f0a8c4;
+  --branch-color:    #4a2816;
+  --text:            #3a5a4a;
+  --text-muted:      #7a9a8a;
+  --text-light:      #adc8b8;
+  --shadow:          rgba(90, 140, 100, 0.14);
+  --radius:          18px;
+  --radius-sm:       10px;
+}
+
+/* =====================================================
+   Reset / Base
+   ===================================================== */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg);
+  background-image:
+    radial-gradient(ellipse at 25% 15%, rgba(122,174,214,.18) 0%, transparent 55%),
+    radial-gradient(ellipse at 75% 85%, rgba(122,184,122,.18) 0%, transparent 55%);
+  color: var(--text);
+  min-height: 100vh;
+  line-height: 1.5;
+}
+
+/* =====================================================
+   Confetti canvas
+   ===================================================== */
+#confetti-canvas {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 900;
+}
+
+/* =====================================================
+   App wrapper
+   ===================================================== */
+.app {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 28px 18px;
+}
+header { text-align: center; margin-bottom: 32px; }
+header h1 {
+  font-size: 2.1rem;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.5px;
+}
+header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px; }
+
+/* =====================================================
+   3-column layout
+   ===================================================== */
+.main-layout {
+  display: grid;
+  grid-template-columns: 210px 1fr 210px;
+  gap: 22px;
+  align-items: start;
+}
+
+/* =====================================================
+   XP Panel (left)
+   ===================================================== */
+.xp-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 4px 24px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  position: sticky;
+  top: 24px;
+}
+.level-badge {
+  text-align: center;
+  background: linear-gradient(135deg, var(--yellow-light), var(--green-light));
+  border-radius: var(--radius-sm);
+  padding: 16px 12px;
+}
+.level-label { display: block; font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1.2px; color: var(--text-muted); }
+#level-number { display: block; font-size: 3.2rem; font-weight: 800; line-height: 1.05; color: var(--text); }
+#level-title  { display: block; font-size: 0.82rem; color: var(--text-muted); margin-top: 2px; }
+
+.xp-bar-container { display: flex; flex-direction: column; gap: 5px; }
+.xp-bar-label { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-muted); }
+.xp-bar-track  { height: 10px; background: var(--bg); border-radius: 5px; overflow: hidden; }
+.xp-bar-fill   { height: 100%; width: 0%; background: linear-gradient(90deg, var(--blue), var(--green)); border-radius: 5px; transition: width 0.7s ease; }
+
+.badges-section h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 9px; }
+.badges-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 7px; }
+.badge-item { text-align: center; padding: 7px 3px; border-radius: var(--radius-sm); background: var(--bg); transition: all 0.3s ease; }
+.badge-item.unlocked { background: linear-gradient(135deg, rgba(232,216,122,.25), rgba(122,184,122,.25)); box-shadow: 0 2px 8px rgba(122,174,214,.2); }
+.badge-item .badge-emoji { font-size: 1.4rem; display: block; }
+.badge-item.locked .badge-emoji { filter: grayscale(1); opacity: 0.25; }
+.badge-item .badge-name { font-size: 0.58rem; color: var(--text-muted); display: block; margin-top: 2px; }
+
+.sessions-count { text-align: center; font-size: 0.82rem; color: var(--text-muted); }
+#sessions-display { font-weight: 700; font-size: 1.15rem; color: var(--green-dark); }
+
+/* =====================================================
+   Center Panel
+   ===================================================== */
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+}
+
+/* ── Timer Card (ring OR input + buttons) ── */
+.timer-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px 28px;
+  box-shadow: 0 4px 24px var(--shadow);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  width: 100%;
+}
+
+/* Input group */
+.timer-input-group {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.timer-input-group input[type="number"] {
+  width: 74px; height: 58px;
+  font-size: 1.9rem; font-weight: 700;
+  text-align: center;
+  border: 2px solid var(--bg);
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  color: var(--text);
+  transition: border-color 0.2s;
+  -moz-appearance: textfield;
+}
+.timer-input-group input[type="number"]::-webkit-inner-spin-button,
+.timer-input-group input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; }
+.timer-input-group input[type="number"]:focus { outline: none; border-color: var(--blue); background: var(--surface); }
+.timer-input-group input[type="number"]:disabled { opacity: 0.5; }
+.colon { font-size: 2rem; font-weight: 700; color: var(--text-muted); line-height: 1; margin-bottom: 4px; }
+
+/* Progress Ring (replaces input while running) */
+.ring-wrap {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.ring-wrap.hidden { display: none; }
+
+#progress-ring-svg {
+  position: absolute;
+  inset: 0;
+  transform: rotate(-90deg);
+}
+#progress-ring-bg { fill: none; stroke: var(--bg2); stroke-width: 10; }
+#progress-ring {
+  fill: none;
+  stroke: var(--blue);
+  stroke-width: 10;
+  stroke-linecap: round;
+  stroke-dasharray: 339.292;
+  stroke-dashoffset: 0;
+  transition: stroke-dashoffset 0.85s linear, stroke 0.8s ease;
+}
+#countdown-display {
+  position: relative;
+  font-size: 1.9rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  z-index: 1;
+}
+
+/* Buttons */
+.timer-buttons { display: flex; gap: 10px; }
+.btn { padding: 10px 22px; border: none; border-radius: 50px; font-size: 0.9rem; font-weight: 600; cursor: pointer; transition: all 0.2s ease; }
+.btn:disabled { opacity: 0.38; cursor: not-allowed; }
+.btn-primary  { background: var(--green); color: #fff; }
+.btn-primary:hover:not(:disabled)  { background: var(--green-dark); transform: translateY(-1px); box-shadow: 0 4px 14px rgba(122,184,122,.42); }
+.btn-secondary { background: var(--blue); color: #fff; }
+.btn-secondary:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
+.btn-ghost  { background: var(--bg); color: var(--text-muted); }
+.btn-ghost:hover:not(:disabled) { background: var(--bg2); color: var(--text); }
+.btn-small  { padding: 6px 14px; font-size: 0.78rem; }
+
+/* =====================================================
+   Tree Scene
+   ===================================================== */
+.tree-scene {
+  position: relative;
+  width: 100%;
+  max-width: 360px;
+  height: 330px;
+  overflow: visible; /* allow puffin speech bubble to show */
+}
+
+#tree-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Branch paths – stroked, no fill */
+.branch {
+  fill: none;
+  stroke: var(--branch-color);
+  stroke-linejoin: round;
+  /* stroke-dasharray and stroke-dashoffset are set by JS */
+}
+
+/* Leaves – filled, opacity set by JS */
+.leaf {
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+
+/* =====================================================
+   Puffin – sits on branch (right main branch area)
+   ===================================================== */
+.puffin-container {
+  position: absolute;
+  /* Positioned on the right main branch ~75% down from top */
+  right: 22px;
+  bottom: 148px;
+  width: 70px;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 0.6s ease;
+}
+.puffin-container.visible {
+  opacity: 1;
+  animation: puffin-bob 2s ease-in-out infinite;
+}
+.puffin-container.hidden {
+  display: none;
+}
+
+#puffin-svg {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 3px 8px rgba(0,0,0,.2));
+}
+
+@keyframes puffin-bob {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  30%       { transform: translateY(-4px) rotate(1deg); }
+  70%       { transform: translateY(-2px) rotate(-1deg); }
+}
+
+/* Speech bubble */
+.speech-bubble {
+  position: absolute;
+  bottom: 78px;
+  right: 0;
+  width: 170px;
+  background: var(--surface);
+  border: 2px solid var(--blue-light);
+  border-radius: 14px;
+  padding: 10px 12px;
+  font-size: 0.79rem;
+  color: var(--text);
+  line-height: 1.45;
+  box-shadow: 0 4px 18px rgba(122,174,214,.25);
+  z-index: 25;
+}
+.speech-bubble::after {
+  content: '';
+  position: absolute;
+  bottom: -12px; right: 20px;
+  border: 6px solid transparent;
+  border-top-color: var(--blue-light);
+}
+.speech-bubble::before {
+  content: '';
+  position: absolute;
+  bottom: -9px; right: 21px;
+  border: 5px solid transparent;
+  border-top-color: var(--surface);
+  z-index: 1;
+}
+.speech-bubble.hidden { display: none; }
+
+/* Kiss heart */
+.kiss-heart {
+  position: absolute;
+  bottom: 78px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 1.7rem;
+  z-index: 30;
+  pointer-events: none;
+}
+.kiss-heart.hidden { display: none; }
+.kiss-heart.flying {
+  animation: heart-fly 2.2s ease-out forwards;
+}
+@keyframes heart-fly {
+  0%   { transform: translateX(-50%) scale(1);   opacity: 1;   bottom: 78px; }
+  50%  { transform: translateX(-50%) scale(1.6); opacity: 0.85; bottom: 155px; }
+  100% { transform: translateX(-50%) scale(0.4); opacity: 0;   bottom: 230px; }
+}
+
+/* =====================================================
+   Right Panel – Quote Log
+   ===================================================== */
+.right-panel {
+  background: var(--surface);
+  border-radius: var(--radius);
+  padding: 20px;
+  box-shadow: 0 4px 24px var(--shadow);
+  position: sticky;
+  top: 24px;
+  max-height: 68vh;
+  display: flex;
+  flex-direction: column;
+}
+.quote-log h3 { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 12px; }
+.quote-log-list { display: flex; flex-direction: column; gap: 9px; overflow-y: auto; flex: 1; }
+.empty-log { color: var(--text-light); font-size: 0.83rem; text-align: center; padding: 20px 0; font-style: italic; line-height: 1.7; }
+.log-entry {
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  padding: 9px 11px;
+  font-size: 0.8rem;
+  color: var(--text);
+  line-height: 1.42;
+  border-left: 3px solid var(--blue-light);
+  animation: slide-in 0.4s ease;
+}
+.log-entry .log-time { font-size: 0.68rem; color: var(--text-light); margin-top: 4px; display: block; }
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(16px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* =====================================================
+   Level-Up Banner
+   ===================================================== */
+.level-up-banner {
+  position: fixed;
+  top: -80px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--yellow), var(--green-light));
+  color: var(--text);
+  padding: 14px 30px;
+  border-radius: 50px;
+  box-shadow: 0 8px 32px rgba(122,184,122,.38);
+  z-index: 800;
+  font-weight: 700;
+  font-size: 1rem;
+  transition: top 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+  white-space: nowrap;
+}
+.level-up-banner.show { top: 20px; }
+.level-up-banner.hidden { display: none; }
+.level-up-content { display: flex; align-items: center; gap: 10px; }
+
+/* =====================================================
+   Badge Popup
+   ===================================================== */
+.badge-popup {
+  position: fixed;
+  bottom: -90px;
+  right: 22px;
+  background: var(--surface);
+  border: 2px solid var(--yellow);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: 0 8px 32px rgba(232,216,122,.38);
+  z-index: 800;
+  transition: bottom 0.45s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.badge-popup.show { bottom: 22px; }
+.badge-popup.hidden { display: none; }
+.badge-popup-content { display: flex; align-items: center; gap: 12px; }
+#badge-popup-emoji { font-size: 2rem; }
+.badge-popup-label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+#badge-popup-text  { font-size: 0.88rem; font-weight: 600; color: var(--text); }
+
+/* =====================================================
+   Mobile
+   ===================================================== */
+@media (max-width: 780px) {
+  .main-layout { grid-template-columns: 1fr; }
+  .xp-panel, .right-panel { position: static; max-height: none; }
+  .tree-scene { max-width: 300px; height: 280px; }
+  header h1 { font-size: 1.55rem; }
+  .timer-card { padding: 16px 18px; }
+}

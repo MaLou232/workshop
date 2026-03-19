@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Schnecks Fokuszeit 🌱</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <canvas id="confetti-canvas"></canvas>
+
+  <div class="app">
+    <header>
+      <h1>🌱 Schnecks Fokuszeit</h1>
+      <p class="subtitle">mit Liebe von Maus</p>
+    </header>
+
+    <main class="main-layout">
+
+      <!-- ===== Left: XP Panel ===== -->
+      <aside class="xp-panel">
+        <div class="level-badge">
+          <span class="level-label">Level</span>
+          <span id="level-number">1</span>
+          <span id="level-title">Sämling</span>
+        </div>
+        <div class="xp-bar-container">
+          <div class="xp-bar-label">
+            <span>XP</span>
+            <span id="xp-display">0 / 100</span>
+          </div>
+          <div class="xp-bar-track">
+            <div id="xp-bar-fill" class="xp-bar-fill"></div>
+          </div>
+        </div>
+        <div class="badges-section">
+          <h3>Abzeichen</h3>
+          <div id="badges-grid" class="badges-grid"></div>
+        </div>
+        <div class="sessions-count">
+          <span id="sessions-display">0</span> Sessionen
+        </div>
+        <button id="test-sound-btn" class="btn btn-ghost btn-small">🔔 Test Sound</button>
+      </aside>
+
+      <!-- ===== Center: Timer + Tree ===== -->
+      <div class="center-panel">
+
+        <!-- Timer card: ring OR input, buttons always visible -->
+        <div class="timer-card">
+
+          <!-- Input group (shown at rest) -->
+          <div id="input-group" class="timer-input-group">
+            <input type="number" id="input-minutes" min="0" max="99" value="25" placeholder="MM">
+            <span class="colon">:</span>
+            <input type="number" id="input-seconds" min="0" max="59" value="00" placeholder="SS">
+          </div>
+
+          <!-- Progress ring (shown while running) -->
+          <div id="ring-wrap" class="ring-wrap hidden">
+            <svg id="progress-ring-svg" viewBox="0 0 120 120">
+              <circle id="progress-ring-bg" cx="60" cy="60" r="54"/>
+              <circle id="progress-ring"    cx="60" cy="60" r="54"/>
+            </svg>
+            <div id="countdown-display">25:00</div>
+          </div>
+
+          <div class="timer-buttons">
+            <button id="start-btn" class="btn btn-primary">Start</button>
+            <button id="pause-btn" class="btn btn-secondary" disabled>Pause</button>
+            <button id="reset-btn" class="btn btn-ghost">Reset</button>
+          </div>
+        </div>
+
+        <!-- Tree scene -->
+        <div class="tree-scene" id="tree-scene">
+
+          <!-- Puffin (sits on branch) -->
+          <div id="puffin-container" class="puffin-container hidden">
+            <div id="kiss-heart" class="kiss-heart hidden">💋</div>
+            <div id="speech-bubble" class="speech-bubble hidden">
+              <p id="quote-text"></p>
+            </div>
+            <svg id="puffin-svg" viewBox="0 0 80 100" xmlns="http://www.w3.org/2000/svg">
+              <ellipse id="wing-left" cx="22" cy="58" rx="10" ry="18"
+                fill="#1a1a2e" transform="rotate(-15 22 58)"/>
+              <ellipse cx="40" cy="62" rx="22" ry="26" fill="#1a1a2e"/>
+              <ellipse cx="40" cy="68" rx="14" ry="18" fill="#f5f5f5"/>
+              <ellipse id="wing-right" cx="58" cy="58" rx="10" ry="18"
+                fill="#1a1a2e" transform="rotate(15 58 58)"/>
+              <circle cx="40" cy="30" r="16" fill="#1a1a2e"/>
+              <ellipse cx="40" cy="33" rx="10" ry="11" fill="#f5f5f5"/>
+              <circle cx="45" cy="28" r="4" fill="#e8a040"/>
+              <circle cx="46" cy="28" r="2.2" fill="#111"/>
+              <circle cx="47" cy="27" r="0.8" fill="white"/>
+              <path d="M46 34 L64 37 L60 32 L48 30 Z" fill="#e8c840"/>
+              <path d="M46 34 L64 37 L62 43 L46 40 Z" fill="#e05820"/>
+              <line x1="46" y1="34" x2="64" y2="37" stroke="#c04010" stroke-width="0.8"/>
+              <path d="M33 88 L28 96 M33 88 L33 97 M33 88 L38 96"
+                stroke="#e05820" stroke-width="3" stroke-linecap="round" fill="none"/>
+              <path d="M47 88 L42 96 M47 88 L47 97 M47 88 L52 96"
+                stroke="#e05820" stroke-width="3" stroke-linecap="round" fill="none"/>
+            </svg>
+          </div>
+
+          <!-- Filigree Tree SVG -->
+          <svg id="tree-svg" viewBox="0 0 220 310" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <!-- Leaf symbol: pointed oval, tip at top, base at 0,0 -->
+              <path id="lf" d="M0,0 C4,-3 5,-9 0,-15 C-5,-9 -4,-3 0,0 Z"/>
+            </defs>
+
+            <!-- Ground -->
+            <ellipse cx="110" cy="302" rx="68" ry="11" fill="#c8dfc8" opacity="0.5"/>
+
+            <!-- ── TRUNK ── -->
+            <!-- Base (thick) -->
+            <path class="branch" data-start="0.00" data-end="0.12" stroke-width="16" stroke-linecap="round"
+              d="M 110,305 C 108,285 106,265 109,245 C 112,228 112,210 110,192"/>
+            <!-- Mid trunk -->
+            <path class="branch" data-start="0.08" data-end="0.18" stroke-width="10" stroke-linecap="round"
+              d="M 110,192 C 109,178 108,165 109,152 C 109,143 108,135 108,126"/>
+
+            <!-- ── MAIN BRANCHES ── -->
+            <!-- Left main -->
+            <path class="branch" data-start="0.15" data-end="0.30" stroke-width="8" stroke-linecap="round"
+              d="M 108,165 C 94,155 76,143 58,130 C 43,118 28,106 16,92"/>
+            <!-- Right main -->
+            <path class="branch" data-start="0.15" data-end="0.30" stroke-width="8" stroke-linecap="round"
+              d="M 110,168 C 126,156 146,143 164,130 C 179,118 192,106 202,92"/>
+            <!-- Center up -->
+            <path class="branch" data-start="0.18" data-end="0.32" stroke-width="6" stroke-linecap="round"
+              d="M 108,148 C 107,136 107,122 109,109 C 110,98 112,87 112,74"/>
+
+            <!-- ── SECONDARY BRANCHES ── -->
+            <!-- L-up: from left main mid -->
+            <path class="branch" data-start="0.27" data-end="0.43" stroke-width="5" stroke-linecap="round"
+              d="M 58,130 C 50,117 44,103 40,88 C 36,74 34,60 37,46"/>
+            <!-- L-wide: from left main mid -->
+            <path class="branch" data-start="0.29" data-end="0.45" stroke-width="5" stroke-linecap="round"
+              d="M 58,130 C 43,126 28,122 14,114 C 4,108 -2,100 0,90"/>
+            <!-- R-up: from right main mid -->
+            <path class="branch" data-start="0.27" data-end="0.43" stroke-width="5" stroke-linecap="round"
+              d="M 164,130 C 170,116 174,101 174,86 C 174,72 172,58 170,46"/>
+            <!-- R-wide: from right main mid -->
+            <path class="branch" data-start="0.29" data-end="0.45" stroke-width="5" stroke-linecap="round"
+              d="M 164,130 C 176,126 188,120 198,112 C 206,106 212,96 212,86"/>
+            <!-- C-left: from center -->
+            <path class="branch" data-start="0.30" data-end="0.46" stroke-width="4" stroke-linecap="round"
+              d="M 108,109 C 96,100 82,90 68,80 C 56,70 46,60 40,48"/>
+            <!-- C-right: from center -->
+            <path class="branch" data-start="0.30" data-end="0.46" stroke-width="4" stroke-linecap="round"
+              d="M 110,109 C 122,99 136,90 150,80 C 162,70 172,60 176,48"/>
+
+            <!-- ── TERTIARY BRANCHES ── -->
+            <path class="branch" data-start="0.40" data-end="0.55" stroke-width="3" stroke-linecap="round"
+              d="M 37,46 C 28,37 20,26 16,14"/>
+            <path class="branch" data-start="0.40" data-end="0.55" stroke-width="3" stroke-linecap="round"
+              d="M 37,46 C 26,42 13,40 4,36"/>
+            <path class="branch" data-start="0.41" data-end="0.56" stroke-width="3" stroke-linecap="round"
+              d="M 170,46 C 175,34 178,22 177,10"/>
+            <path class="branch" data-start="0.41" data-end="0.56" stroke-width="3" stroke-linecap="round"
+              d="M 170,46 C 181,42 192,40 202,38"/>
+            <path class="branch" data-start="0.38" data-end="0.53" stroke-width="3" stroke-linecap="round"
+              d="M 40,48 C 30,38 22,26 18,14"/>
+            <path class="branch" data-start="0.38" data-end="0.53" stroke-width="3" stroke-linecap="round"
+              d="M 176,48 C 182,37 185,25 183,13"/>
+            <path class="branch" data-start="0.43" data-end="0.57" stroke-width="2.5" stroke-linecap="round"
+              d="M 112,74 C 105,63 101,51 104,39"/>
+            <path class="branch" data-start="0.43" data-end="0.57" stroke-width="2.5" stroke-linecap="round"
+              d="M 112,74 C 121,62 130,51 135,39"/>
+            <path class="branch" data-start="0.43" data-end="0.57" stroke-width="2.5" stroke-linecap="round"
+              d="M 112,74 C 103,64 95,54 90,42"/>
+
+            <!-- ── FINE TIPS ── -->
+            <path class="branch" data-start="0.50" data-end="0.64" stroke-width="2" stroke-linecap="round"
+              d="M 40,88 C 29,82 17,78 5,76"/>
+            <path class="branch" data-start="0.50" data-end="0.64" stroke-width="2" stroke-linecap="round"
+              d="M 40,88 C 35,76 31,63 32,50"/>
+            <path class="branch" data-start="0.51" data-end="0.65" stroke-width="2" stroke-linecap="round"
+              d="M 174,86 C 183,80 194,78 204,78"/>
+            <path class="branch" data-start="0.51" data-end="0.65" stroke-width="2" stroke-linecap="round"
+              d="M 174,86 C 175,74 175,61 172,49"/>
+            <path class="branch" data-start="0.46" data-end="0.60" stroke-width="2" stroke-linecap="round"
+              d="M 16,92 C 8,84 2,74 0,62"/>
+            <path class="branch" data-start="0.46" data-end="0.60" stroke-width="2" stroke-linecap="round"
+              d="M 16,92 C 6,88 -2,82 -4,74"/>
+            <path class="branch" data-start="0.46" data-end="0.60" stroke-width="2" stroke-linecap="round"
+              d="M 202,92 C 210,84 216,74 217,62"/>
+            <path class="branch" data-start="0.46" data-end="0.60" stroke-width="2" stroke-linecap="round"
+              d="M 202,92 C 210,88 217,82 218,74"/>
+
+            <!-- ── LEAVES ── scattered at branch tips -->
+            <!-- Left cluster -->
+            <use href="#lf" class="leaf" data-min="0.42" transform="translate(14,12) rotate(20)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.44" transform="translate(20,10) rotate(-15)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.45" transform="translate(8,14) rotate(40)" fill="#6db06d"/>
+            <use href="#lf" class="leaf" data-min="0.43" transform="translate(26,12) rotate(5)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.46" transform="translate(2,36) rotate(60)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.47" transform="translate(10,34) rotate(30)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.46" transform="translate(-2,44) rotate(70)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.48" transform="translate(30,48) rotate(-10)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.49" transform="translate(22,44) rotate(15)" fill="#8eca7e"/>
+
+            <!-- L-wide cluster -->
+            <use href="#lf" class="leaf" data-min="0.48" transform="translate(-4,90) rotate(80)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.50" transform="translate(2,88) rotate(60)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.51" transform="translate(-2,82) rotate(90)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.49" transform="translate(8,76) rotate(70)" fill="#7ab87a"/>
+
+            <!-- Right cluster -->
+            <use href="#lf" class="leaf" data-min="0.42" transform="translate(174,8) rotate(-20)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.44" transform="translate(180,10) rotate(15)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.45" transform="translate(170,12) rotate(-40)" fill="#6db06d"/>
+            <use href="#lf" class="leaf" data-min="0.43" transform="translate(188,12) rotate(-5)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.46" transform="translate(196,36) rotate(-60)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.47" transform="translate(204,38) rotate(-30)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.46" transform="translate(200,46) rotate(-70)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.48" transform="translate(210,84) rotate(-80)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.50" transform="translate(214,78) rotate(-60)" fill="#8eca7e"/>
+
+            <!-- R-wide cluster -->
+            <use href="#lf" class="leaf" data-min="0.48" transform="translate(214,74) rotate(-80)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.50" transform="translate(218,68) rotate(-90)" fill="#8eca7e"/>
+
+            <!-- Center cluster -->
+            <use href="#lf" class="leaf" data-min="0.50" transform="translate(100,37) rotate(10)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.52" transform="translate(108,36) rotate(-10)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.53" transform="translate(93,40) rotate(25)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.51" transform="translate(132,37) rotate(-20)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.54" transform="translate(138,40) rotate(-35)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.52" transform="translate(88,40) rotate(30)" fill="#6db06d"/>
+
+            <!-- C-left cluster -->
+            <use href="#lf" class="leaf" data-min="0.53" transform="translate(16,12) rotate(30)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.55" transform="translate(22,15) rotate(10)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.54" transform="translate(36,48) rotate(5)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.56" transform="translate(28,50) rotate(20)" fill="#7ab87a"/>
+
+            <!-- C-right cluster -->
+            <use href="#lf" class="leaf" data-min="0.53" transform="translate(178,12) rotate(-30)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.55" transform="translate(184,15) rotate(-10)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.54" transform="translate(170,48) rotate(-5)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.56" transform="translate(182,50) rotate(-20)" fill="#7ab87a"/>
+
+            <!-- Extra scattered leaves for fullness -->
+            <use href="#lf" class="leaf" data-min="0.58" transform="translate(60,126) rotate(-25)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.60" transform="translate(52,120) rotate(-40)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.58" transform="translate(162,126) rotate(25)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.60" transform="translate(170,120) rotate(40)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.62" transform="translate(44,60) rotate(15)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.62" transform="translate(166,60) rotate(-15)" fill="#9ed88e"/>
+            <use href="#lf" class="leaf" data-min="0.64" transform="translate(70,76) rotate(8)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.64" transform="translate(148,76) rotate(-8)" fill="#7ab87a"/>
+            <use href="#lf" class="leaf" data-min="0.66" transform="translate(30,60) rotate(45)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.66" transform="translate(184,60) rotate(-45)" fill="#8eca7e"/>
+            <use href="#lf" class="leaf" data-min="0.68" transform="translate(54,74) rotate(22)" fill="#6db06d"/>
+            <use href="#lf" class="leaf" data-min="0.68" transform="translate(154,74) rotate(-22)" fill="#6db06d"/>
+
+          </svg>
+        </div><!-- /tree-scene -->
+      </div><!-- /center-panel -->
+
+      <!-- ===== Right: Quote Log ===== -->
+      <aside class="right-panel">
+        <div class="quote-log">
+          <h3>Maus's Botschaften 💌</h3>
+          <div id="quote-log-list" class="quote-log-list">
+            <p class="empty-log">Noch keine Nachrichten...<br>starte einen Timer!</p>
+          </div>
+        </div>
+      </aside>
+
+    </main>
+  </div>
+
+  <!-- Level-up banner -->
+  <div id="level-up-banner" class="level-up-banner hidden">
+    <div class="level-up-content">
+      <span>🌟</span>
+      <span id="level-up-text">Level Up!</span>
+    </div>
+  </div>
+
+  <!-- Badge popup -->
+  <div id="badge-popup" class="badge-popup hidden">
+    <div class="badge-popup-content">
+      <span id="badge-popup-emoji"></span>
+      <div>
+        <div class="badge-popup-label">Neues Abzeichen!</div>
+        <div id="badge-popup-text"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
