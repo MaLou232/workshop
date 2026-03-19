@@ -122,8 +122,31 @@
     return _ac;
   }
 
-  // Call once from any button handler to unlock audio for the page session
-  function unlockAudio() { try { getAc(); } catch (e) {} }
+  // Wire all <audio> elements through the shared AudioContext so that
+  // audio.play() works even from setInterval/setTimeout callbacks.
+  // (iOS Safari and strict autoplay policies block native audio.play()
+  // in timer callbacks; routing through a running AudioContext bypasses this.)
+  const _mediaSrc = {};
+  function wireAudioElement(id) {
+    if (_mediaSrc[id]) return;
+    const audio = document.getElementById(id);
+    if (!audio) return;
+    try {
+      const ac  = getAc();
+      const src = ac.createMediaElementSource(audio);
+      src.connect(ac.destination);
+      _mediaSrc[id] = src;
+    } catch (e) {}
+  }
+
+  // Call on every button click to unlock the AudioContext AND wire elements.
+  function unlockAudio() {
+    try {
+      getAc();
+      wireAudioElement('snd-bird');
+      wireAudioElement('snd-leaves');
+    } catch (e) {}
+  }
 
   // Bell chime: timer end
   function playPing() {
