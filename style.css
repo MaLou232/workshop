@@ -218,9 +218,10 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
 .tree-scene {
   position: relative;
   width: 100%;
-  max-width: 360px;
-  height: 330px;
+  max-width: 340px;
+  height: 290px;
   overflow: visible; /* allow puffin speech bubble to show */
+  margin-top: 6px;
 }
 
 #tree-svg {
@@ -422,7 +423,7 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
 @media (max-width: 780px) {
   .main-layout { grid-template-columns: 1fr; }
   .xp-panel, .right-panel { position: static; max-height: none; }
-  .tree-scene { max-width: 300px; height: 280px; }
+  .tree-scene { max-width: 280px; height: 250px; }
   header h1 { font-size: 1.55rem; }
   .timer-card { padding: 16px 18px; }
 }

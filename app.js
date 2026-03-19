@@ -55,7 +55,8 @@
     puffinShown:   false,   // used for short timers (≤15 min)
     puffinActive:  false,   // puffin currently on branch
     lastPuffinAt:  0,       // elapsed seconds when last puffin appeared
-    lastTenth:     -1,      // for rustle sound every 10%
+    lastTenth:     -1,      // unused, kept for safety
+    leavesPlayed:  false,   // rustle sound played once per session
   };
 
   let player = {
@@ -139,6 +140,30 @@
     } catch (e) {}
   }
 
+  // Play poop sound amplified (Web Audio gain boost since file is quiet)
+  let _poopCtx = null;
+  function playPoopAmplified() {
+    const audio = document.getElementById('snd-poop');
+    if (!audio) return;
+    try {
+      if (!_poopCtx) {
+        _poopCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const src  = _poopCtx.createMediaElementSource(audio);
+        const gain = _poopCtx.createGain();
+        gain.gain.value = 5.0;
+        src.connect(gain);
+        gain.connect(_poopCtx.destination);
+      }
+      if (_poopCtx.state === 'suspended') _poopCtx.resume();
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    } catch (e) {
+      // fallback without amplification
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
+    }
+  }
+
   // =====================================================
   // TIMER
   // =====================================================
@@ -166,6 +191,7 @@
       timer.puffinActive = false;
       timer.lastPuffinAt = 0;
       timer.lastTenth    = -1;
+      timer.leavesPlayed = false;
       clearPoops();
       clearLog();
     }
@@ -202,11 +228,12 @@
 
     timer.isRunning   = false;
     timer.isPaused    = false;
-    timer.puffinShown = false;
+    timer.puffinShown  = false;
     timer.puffinActive = false;
     timer.lastPuffinAt = 0;
-    timer.lastTenth   = -1;
-    timer.remaining   = getInputSecs();
+    timer.lastTenth    = -1;
+    timer.leavesPlayed = false;
+    timer.remaining    = getInputSecs();
     clearPoops();
 
     // Swap ring back to input
@@ -250,11 +277,15 @@
     // XP every 5 minutes
     if (elapsed > 0 && elapsed % 300 === 0) awardXP(5);
 
-    // Leaf rustle sound every 10% of progress
-    const tenths = Math.floor(progress * 10);
-    if (tenths > timer.lastTenth) {
-      timer.lastTenth = tenths;
-      if (tenths > 0) playAudio('snd-leaves');
+    // Leaf rustle: once when leaves start appearing (~40% progress), max 3 s
+    if (!timer.leavesPlayed && progress >= 0.40) {
+      timer.leavesPlayed = true;
+      const leavesAudio = document.getElementById('snd-leaves');
+      if (leavesAudio) {
+        leavesAudio.currentTime = 0;
+        leavesAudio.play().catch(() => {});
+        setTimeout(() => { leavesAudio.pause(); leavesAudio.currentTime = 0; }, 3000);
+      }
     }
 
     // Puffin scheduling
@@ -485,7 +516,7 @@
   let activePoops = [];
 
   function doPoop() {
-    playAudio('snd-poop');
+    playPoopAmplified();
     const scene = document.getElementById('tree-scene');
     const poop  = document.createElement('div');
     poop.textContent = '💩';
