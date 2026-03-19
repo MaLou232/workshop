@@ -47,13 +47,15 @@
   // =====================================================
 
   let timer = {
-    totalSeconds: 25 * 60,
-    remaining:    25 * 60,
-    isRunning:    false,
-    isPaused:     false,
-    intervalId:   null,
-    puffinShown:  false,
-    lastTenth:    -1,   // for rustle sound every 10%
+    totalSeconds:  25 * 60,
+    remaining:     25 * 60,
+    isRunning:     false,
+    isPaused:      false,
+    intervalId:    null,
+    puffinShown:   false,   // used for short timers (≤15 min)
+    puffinActive:  false,   // puffin currently on branch
+    lastPuffinAt:  0,       // elapsed seconds when last puffin appeared
+    lastTenth:     -1,      // for rustle sound every 10%
   };
 
   let player = {
@@ -103,7 +105,7 @@
   };
 
   // =====================================================
-  // AUDIO  (Web Audio API – no external files)
+  // AUDIO
   // =====================================================
 
   function mkCtx() {
@@ -127,139 +129,13 @@
     } catch (e) {}
   }
 
-  // Leaf rustle: multiple short bursts of bandpass noise ~2-4 kHz
-  function playRustle() {
+  // Play an <audio> element from scratch (rewind if already playing)
+  function playAudio(id) {
     try {
-      const ac = mkCtx(), now = ac.currentTime;
-      const burstCount = 6;
-      for (let i = 0; i < burstCount; i++) {
-        const t   = now + i * 0.055;
-        const len = Math.floor(ac.sampleRate * 0.11);
-        const buf = ac.createBuffer(1, len, ac.sampleRate);
-        const d   = buf.getChannelData(0);
-        for (let j = 0; j < len; j++) {
-          // shape: ramp-up then ramp-down
-          const env = Math.min(j / 400, 1) * (1 - j / len);
-          d[j] = (Math.random() * 2 - 1) * env;
-        }
-        const src  = ac.createBufferSource();
-        src.buffer = buf;
-        // Two bandpass filters for richer leaf texture
-        const bp1 = ac.createBiquadFilter();
-        bp1.type = 'bandpass';
-        bp1.frequency.value = 2800 + Math.random() * 1200;
-        bp1.Q.value = 0.8;
-        const bp2 = ac.createBiquadFilter();
-        bp2.type = 'bandpass';
-        bp2.frequency.value = 1800 + Math.random() * 800;
-        bp2.Q.value = 1.2;
-        const gain = ac.createGain();
-        gain.gain.setValueAtTime(0.18, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.14);
-        src.connect(bp1); bp1.connect(bp2); bp2.connect(gain); gain.connect(ac.destination);
-        src.start(t);
-      }
-    } catch (e) {}
-  }
-
-  // Earth crack: seed sprouting
-  function playCrack() {
-    try {
-      const ac = mkCtx(), now = ac.currentTime;
-      const len = Math.floor(ac.sampleRate * 0.28);
-      const buf = ac.createBuffer(1, len, ac.sampleRate);
-      const d   = buf.getChannelData(0);
-      for (let i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / len);
-      const src    = ac.createBufferSource();
-      src.buffer   = buf;
-      const filter = ac.createBiquadFilter();
-      filter.type  = 'bandpass';
-      filter.frequency.value = 650; filter.Q.value = 0.5;
-      const gain = ac.createGain();
-      gain.gain.setValueAtTime(0.5, now);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.32);
-      src.connect(filter); filter.connect(gain); gain.connect(ac.destination);
-      src.start(now);
-    } catch (e) {}
-  }
-
-  // Wood creak
-  function playCreak() {
-    try {
-      const ac = mkCtx(), now = ac.currentTime;
-      const osc = ac.createOscillator();
-      osc.type = 'sawtooth';
-      osc.frequency.setValueAtTime(130, now);
-      osc.frequency.linearRampToValueAtTime(72, now + 0.9);
-      const lfo  = ac.createOscillator(); lfo.frequency.value = 7;
-      const lfoG = ac.createGain();       lfoG.gain.value = 22;
-      lfo.connect(lfoG); lfoG.connect(osc.frequency);
-      const filt = ac.createBiquadFilter();
-      filt.type = 'lowpass'; filt.frequency.value = 400;
-      const gain = ac.createGain();
-      gain.gain.setValueAtTime(0.14, now);
-      gain.gain.linearRampToValueAtTime(0.3, now + 0.3);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 1.1);
-      osc.connect(filt); filt.connect(gain); gain.connect(ac.destination);
-      lfo.start(now); osc.start(now);
-      lfo.stop(now + 1.1); osc.stop(now + 1.1);
-    } catch (e) {}
-  }
-
-  // Fart sound for poop event
-  function playFart() {
-    try {
-      const ac = mkCtx(), now = ac.currentTime;
-      // Low oscillator with LFO wobble
-      const osc = ac.createOscillator();
-      osc.type = 'sine';
-      osc.frequency.setValueAtTime(110, now);
-      osc.frequency.exponentialRampToValueAtTime(55, now + 0.55);
-      const lfo = ac.createOscillator(); lfo.frequency.value = 22;
-      const lfoG = ac.createGain();      lfoG.gain.value = 30;
-      lfo.connect(lfoG); lfoG.connect(osc.frequency);
-      // Noise layer for texture
-      const blen = Math.floor(ac.sampleRate * 0.6);
-      const bbuf = ac.createBuffer(1, blen, ac.sampleRate);
-      const bd   = bbuf.getChannelData(0);
-      for (let i = 0; i < blen; i++) bd[i] = (Math.random() * 2 - 1) * 0.45;
-      const noise = ac.createBufferSource(); noise.buffer = bbuf;
-      const nlpf  = ac.createBiquadFilter(); nlpf.type = 'lowpass'; nlpf.frequency.value = 220;
-      const nGain = ac.createGain();
-      nGain.gain.setValueAtTime(0.35, now);
-      nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
-      // Main osc envelope
-      const lpf  = ac.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 320;
-      const gain = ac.createGain();
-      gain.gain.setValueAtTime(0.7, now);
-      gain.gain.linearRampToValueAtTime(0.9, now + 0.12);
-      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
-      osc.connect(lpf); lpf.connect(gain); gain.connect(ac.destination);
-      noise.connect(nlpf); nlpf.connect(nGain); nGain.connect(ac.destination);
-      lfo.start(now); osc.start(now); noise.start(now);
-      lfo.stop(now + 0.6); osc.stop(now + 0.6);
-    } catch (e) {}
-  }
-
-  // Wing flutter for puffin arrival
-  function playFlap() {
-    try {
-      const ac = mkCtx(), now = ac.currentTime;
-      for (let i = 0; i < 8; i++) {
-        const t   = now + i * 0.08;
-        const len = Math.floor(ac.sampleRate * 0.04);
-        const buf = ac.createBuffer(1, len, ac.sampleRate);
-        const d   = buf.getChannelData(0);
-        for (let j = 0; j < len; j++) d[j] = (Math.random() * 2 - 1) * (1 - j / len);
-        const src  = ac.createBufferSource(); src.buffer = buf;
-        const filt = ac.createBiquadFilter();
-        filt.type = 'bandpass'; filt.frequency.value = 1200 + Math.random() * 900; filt.Q.value = 1.2;
-        const gain = ac.createGain();
-        gain.gain.setValueAtTime(0.15, t);
-        gain.gain.exponentialRampToValueAtTime(0.001, t + 0.065);
-        src.connect(filt); filt.connect(gain); gain.connect(ac.destination);
-        src.start(t);
-      }
+      const audio = document.getElementById(id);
+      if (!audio) return;
+      audio.currentTime = 0;
+      audio.play().catch(() => {});
     } catch (e) {}
   }
 
@@ -287,9 +163,10 @@
       timer.totalSeconds = total;
       timer.remaining    = total;
       timer.puffinShown  = false;
+      timer.puffinActive = false;
+      timer.lastPuffinAt = 0;
       timer.lastTenth    = -1;
-      lastCrackPlayed    = false;
-      lastCreakPlayed    = false;
+      clearPoops();
       clearLog();
     }
 
@@ -326,10 +203,11 @@
     timer.isRunning   = false;
     timer.isPaused    = false;
     timer.puffinShown = false;
+    timer.puffinActive = false;
+    timer.lastPuffinAt = 0;
     timer.lastTenth   = -1;
     timer.remaining   = getInputSecs();
-    lastCrackPlayed   = false;
-    lastCreakPlayed   = false;
+    clearPoops();
 
     // Swap ring back to input
     el.ringWrap.classList.add('hidden');
@@ -376,13 +254,25 @@
     const tenths = Math.floor(progress * 10);
     if (tenths > timer.lastTenth) {
       timer.lastTenth = tenths;
-      if (tenths > 0) playRustle();
+      if (tenths > 0) playAudio('snd-leaves');
     }
 
-    // Puffin at 75%
-    if (!timer.puffinShown && progress >= 0.75) {
-      timer.puffinShown = true;
-      showPuffin();
+    // Puffin scheduling
+    if (timer.totalSeconds > 900) {
+      // Long timer (>15 min): appear every 10 minutes
+      if (!timer.puffinActive && elapsed > 0 && (elapsed - timer.lastPuffinAt) >= 600) {
+        timer.puffinActive = true;
+        timer.lastPuffinAt = elapsed;
+        showPuffin();
+      }
+    } else {
+      // Short timer: appear once at 75%
+      if (!timer.puffinShown && progress >= 0.75) {
+        timer.puffinShown  = true;
+        timer.puffinActive = true;
+        timer.lastPuffinAt = elapsed;
+        showPuffin();
+      }
     }
 
     // Ring colour: blue → yellow → green
@@ -427,48 +317,70 @@
   // TREE  (continuous growth via stroke-dashoffset)
   // =====================================================
 
-  // Generate ~250 leaves distributed across the canopy
+  // Generate ~500 leaves distributed across a full rounded dome canopy
   function generateLeaves() {
     const svg    = document.getElementById('tree-svg');
-    const colors = ['#7ab87a','#8eca7e','#9ed88e','#6db06d','#a0d090','#b8e0a0'];
+    const colors = ['#7ab87a','#8eca7e','#9ed88e','#6db06d','#a0d090','#b8e0a0','#c4e8b0','#58a058'];
     // [cx, cy, rx, ry, count, minProgress, maxProgress]
     const regions = [
-      // Far-left tips
-      [12,  11, 22, 16, 20, 0.41, 0.64],
-      [4,   38, 16, 18, 16, 0.46, 0.67],
-      [20,  50, 20, 16, 18, 0.44, 0.65],
-      [26,  65, 18, 16, 16, 0.49, 0.69],
-      // Left side mid
-      [45,  80, 22, 18, 20, 0.53, 0.73],
-      [38,  98, 18, 16, 16, 0.55, 0.75],
-      [60, 126, 18, 14, 14, 0.57, 0.77],
-      // Center top
-      [100, 37, 30, 18, 24, 0.50, 0.71],
-      [100, 57, 38, 20, 22, 0.52, 0.74],
-      [100, 80, 44, 20, 22, 0.55, 0.78],
-      [100,105, 46, 18, 20, 0.58, 0.80],
-      // Right side mid
-      [156, 80, 22, 18, 20, 0.53, 0.73],
-      [174, 98, 18, 16, 16, 0.55, 0.75],
-      [160,126, 18, 14, 14, 0.57, 0.77],
-      // Far-right tips
-      [207, 11, 22, 16, 20, 0.41, 0.64],
-      [215, 38, 16, 18, 16, 0.46, 0.67],
-      [196, 50, 20, 16, 18, 0.44, 0.65],
-      [192, 65, 18, 16, 16, 0.49, 0.69],
-      // Wide lower clusters (fills canopy bulk)
-      [60,  60, 26, 20, 18, 0.52, 0.76],
-      [155, 60, 26, 20, 18, 0.52, 0.76],
-      [80,  90, 28, 18, 18, 0.56, 0.80],
-      [124, 90, 28, 18, 18, 0.56, 0.80],
+      // ── Dome top (dense center crown) ──
+      [110, 28, 32, 18, 36, 0.48, 0.68],
+      [110, 48, 42, 22, 40, 0.50, 0.72],
+      [110, 68, 50, 24, 38, 0.52, 0.74],
+      [110, 88, 52, 22, 36, 0.54, 0.76],
+      [110,108, 50, 20, 34, 0.56, 0.78],
+      [110,124, 44, 16, 28, 0.58, 0.80],
+
+      // ── Left dome quadrant ──
+      [72,  42, 24, 20, 28, 0.50, 0.72],
+      [58,  62, 22, 22, 26, 0.52, 0.74],
+      [48,  82, 20, 20, 24, 0.54, 0.76],
+      [40, 100, 18, 18, 22, 0.56, 0.78],
+      [34, 118, 16, 16, 18, 0.57, 0.80],
+
+      // ── Right dome quadrant ──
+      [148,  42, 24, 20, 28, 0.50, 0.72],
+      [162,  62, 22, 22, 26, 0.52, 0.74],
+      [172,  82, 20, 20, 24, 0.54, 0.76],
+      [180, 100, 18, 18, 22, 0.56, 0.78],
+      [186, 118, 16, 16, 18, 0.57, 0.80],
+
+      // ── Far-left tips ──
+      [14,  12, 20, 14, 22, 0.41, 0.64],
+      [4,   34, 14, 16, 18, 0.44, 0.66],
+      [8,   52, 16, 14, 18, 0.46, 0.68],
+      [18,  70, 16, 14, 16, 0.48, 0.70],
+      [28,  90, 18, 14, 18, 0.50, 0.72],
+
+      // ── Far-right tips ──
+      [206,  12, 20, 14, 22, 0.41, 0.64],
+      [216,  34, 14, 16, 18, 0.44, 0.66],
+      [212,  52, 16, 14, 18, 0.46, 0.68],
+      [202,  70, 16, 14, 16, 0.48, 0.70],
+      [192,  90, 18, 14, 18, 0.50, 0.72],
+
+      // ── Filling gaps between dome sections ──
+      [86,  36, 20, 16, 22, 0.49, 0.71],
+      [134, 36, 20, 16, 22, 0.49, 0.71],
+      [78,  90, 26, 18, 24, 0.55, 0.78],
+      [142, 90, 26, 18, 24, 0.55, 0.78],
+      [68, 115, 22, 16, 18, 0.57, 0.80],
+      [152,115, 22, 16, 18, 0.57, 0.80],
+
+      // ── Extra bulk layers ──
+      [110, 15, 22, 12, 20, 0.46, 0.66],
+      [90,  55, 30, 18, 22, 0.51, 0.73],
+      [130, 55, 30, 18, 22, 0.51, 0.73],
+      [100, 78, 36, 18, 22, 0.53, 0.75],
+      [120, 78, 36, 18, 22, 0.53, 0.75],
     ];
 
     regions.forEach(([cx, cy, rx, ry, count, minT, maxT]) => {
       for (let i = 0; i < count; i++) {
         const x     = cx + (Math.random() - 0.5) * rx * 2;
         const y     = cy + (Math.random() - 0.5) * ry * 2;
-        const angle = (Math.random() - 0.5) * 90;
-        const scale = 0.75 + Math.random() * 0.65;
+        const angle = (Math.random() - 0.5) * 100;
+        const scale = 0.7 + Math.random() * 0.75;
         const thr   = minT + Math.random() * (maxT - minT);
         const color = colors[Math.floor(Math.random() * colors.length)];
         const use   = document.createElementNS('http://www.w3.org/2000/svg', 'use');
@@ -494,9 +406,6 @@
     // Leaves start invisible (set via CSS opacity:0)
   }
 
-  let lastCrackPlayed = false;
-  let lastCreakPlayed = false;
-
   function updateTree(progress) {
     // Branches: each has data-start and data-end
     document.querySelectorAll('.branch').forEach(path => {
@@ -513,10 +422,6 @@
       const reveal = Math.max(0, Math.min(1, (progress - min) / 0.09));
       leaf.style.opacity = reveal;
     });
-
-    // One-shot sounds at growth milestones
-    if (!lastCrackPlayed && progress >= 0.10) { lastCrackPlayed = true; playCrack(); }
-    if (!lastCreakPlayed && progress >= 0.25) { lastCreakPlayed = true; playCreak(); }
   }
 
   // =====================================================
@@ -530,7 +435,7 @@
 
   function showPuffin() {
     clearPuffinTimeouts();
-    playFlap();
+    playAudio('snd-bird');
 
     const p = el.puffin;
     p.classList.remove('hidden');
@@ -563,7 +468,10 @@
     const p = el.puffin;
     p.classList.remove('visible');
     // After fade-out transition, fully hide
-    setTimeout(() => p.classList.add('hidden'), 700);
+    setTimeout(() => {
+      p.classList.add('hidden');
+      timer.puffinActive = false;
+    }, 700);
   }
 
   function sendKiss() {
@@ -574,13 +482,28 @@
     setTimeout(() => { h.classList.add('hidden'); h.classList.remove('flying'); }, 2400);
   }
 
+  let activePoops = [];
+
   function doPoop() {
-    playFart();
-    const poop = document.createElement('div');
+    playAudio('snd-poop');
+    const scene = document.getElementById('tree-scene');
+    const poop  = document.createElement('div');
     poop.textContent = '💩';
-    poop.className   = 'poop-drop';
-    el.puffin.appendChild(poop);
-    setTimeout(() => poop.remove(), 1500);
+    poop.className   = 'poop-item';
+    // Start at puffin position (right ~68px, bottom ~174px in scene)
+    poop.style.right  = '72px';
+    poop.style.bottom = '174px';
+    scene.appendChild(poop);
+    activePoops.push(poop);
+    // Force reflow, then transition to ground
+    void poop.offsetWidth;
+    poop.style.bottom    = '8px';
+    poop.style.transform = 'rotate(20deg)';
+  }
+
+  function clearPoops() {
+    activePoops.forEach(p => p.remove());
+    activePoops = [];
   }
 
   // =====================================================
