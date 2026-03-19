@@ -206,6 +206,41 @@
     } catch (e) {}
   }
 
+  // Fart sound for poop event
+  function playFart() {
+    try {
+      const ac = mkCtx(), now = ac.currentTime;
+      // Low oscillator with LFO wobble
+      const osc = ac.createOscillator();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(110, now);
+      osc.frequency.exponentialRampToValueAtTime(55, now + 0.55);
+      const lfo = ac.createOscillator(); lfo.frequency.value = 22;
+      const lfoG = ac.createGain();      lfoG.gain.value = 30;
+      lfo.connect(lfoG); lfoG.connect(osc.frequency);
+      // Noise layer for texture
+      const blen = Math.floor(ac.sampleRate * 0.6);
+      const bbuf = ac.createBuffer(1, blen, ac.sampleRate);
+      const bd   = bbuf.getChannelData(0);
+      for (let i = 0; i < blen; i++) bd[i] = (Math.random() * 2 - 1) * 0.45;
+      const noise = ac.createBufferSource(); noise.buffer = bbuf;
+      const nlpf  = ac.createBiquadFilter(); nlpf.type = 'lowpass'; nlpf.frequency.value = 220;
+      const nGain = ac.createGain();
+      nGain.gain.setValueAtTime(0.35, now);
+      nGain.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+      // Main osc envelope
+      const lpf  = ac.createBiquadFilter(); lpf.type = 'lowpass'; lpf.frequency.value = 320;
+      const gain = ac.createGain();
+      gain.gain.setValueAtTime(0.7, now);
+      gain.gain.linearRampToValueAtTime(0.9, now + 0.12);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+      osc.connect(lpf); lpf.connect(gain); gain.connect(ac.destination);
+      noise.connect(nlpf); nlpf.connect(nGain); nGain.connect(ac.destination);
+      lfo.start(now); osc.start(now); noise.start(now);
+      lfo.stop(now + 0.6); osc.stop(now + 0.6);
+    } catch (e) {}
+  }
+
   // Wing flutter for puffin arrival
   function playFlap() {
     try {
@@ -253,6 +288,9 @@
       timer.remaining    = total;
       timer.puffinShown  = false;
       timer.lastTenth    = -1;
+      lastCrackPlayed    = false;
+      lastCreakPlayed    = false;
+      clearLog();
     }
 
     timer.isRunning = true;
@@ -290,6 +328,8 @@
     timer.puffinShown = false;
     timer.lastTenth   = -1;
     timer.remaining   = getInputSecs();
+    lastCrackPlayed   = false;
+    lastCreakPlayed   = false;
 
     // Swap ring back to input
     el.ringWrap.classList.add('hidden');
@@ -387,6 +427,63 @@
   // TREE  (continuous growth via stroke-dashoffset)
   // =====================================================
 
+  // Generate ~250 leaves distributed across the canopy
+  function generateLeaves() {
+    const svg    = document.getElementById('tree-svg');
+    const colors = ['#7ab87a','#8eca7e','#9ed88e','#6db06d','#a0d090','#b8e0a0'];
+    // [cx, cy, rx, ry, count, minProgress, maxProgress]
+    const regions = [
+      // Far-left tips
+      [12,  11, 22, 16, 20, 0.41, 0.64],
+      [4,   38, 16, 18, 16, 0.46, 0.67],
+      [20,  50, 20, 16, 18, 0.44, 0.65],
+      [26,  65, 18, 16, 16, 0.49, 0.69],
+      // Left side mid
+      [45,  80, 22, 18, 20, 0.53, 0.73],
+      [38,  98, 18, 16, 16, 0.55, 0.75],
+      [60, 126, 18, 14, 14, 0.57, 0.77],
+      // Center top
+      [100, 37, 30, 18, 24, 0.50, 0.71],
+      [100, 57, 38, 20, 22, 0.52, 0.74],
+      [100, 80, 44, 20, 22, 0.55, 0.78],
+      [100,105, 46, 18, 20, 0.58, 0.80],
+      // Right side mid
+      [156, 80, 22, 18, 20, 0.53, 0.73],
+      [174, 98, 18, 16, 16, 0.55, 0.75],
+      [160,126, 18, 14, 14, 0.57, 0.77],
+      // Far-right tips
+      [207, 11, 22, 16, 20, 0.41, 0.64],
+      [215, 38, 16, 18, 16, 0.46, 0.67],
+      [196, 50, 20, 16, 18, 0.44, 0.65],
+      [192, 65, 18, 16, 16, 0.49, 0.69],
+      // Wide lower clusters (fills canopy bulk)
+      [60,  60, 26, 20, 18, 0.52, 0.76],
+      [155, 60, 26, 20, 18, 0.52, 0.76],
+      [80,  90, 28, 18, 18, 0.56, 0.80],
+      [124, 90, 28, 18, 18, 0.56, 0.80],
+    ];
+
+    regions.forEach(([cx, cy, rx, ry, count, minT, maxT]) => {
+      for (let i = 0; i < count; i++) {
+        const x     = cx + (Math.random() - 0.5) * rx * 2;
+        const y     = cy + (Math.random() - 0.5) * ry * 2;
+        const angle = (Math.random() - 0.5) * 90;
+        const scale = 0.75 + Math.random() * 0.65;
+        const thr   = minT + Math.random() * (maxT - minT);
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const use   = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', '#lf');
+        use.setAttribute('class', 'leaf');
+        use.dataset.min = thr.toFixed(3);
+        use.setAttribute('transform',
+          `translate(${x.toFixed(1)},${y.toFixed(1)}) rotate(${angle.toFixed(1)}) scale(${scale.toFixed(2)})`);
+        use.setAttribute('fill', color);
+        use.style.opacity = '0';
+        svg.appendChild(use);
+      }
+    });
+  }
+
   function initTree() {
     document.querySelectorAll('.branch').forEach(path => {
       const len = path.getTotalLength ? path.getTotalLength() : 100;
@@ -437,18 +534,23 @@
 
     const p = el.puffin;
     p.classList.remove('hidden');
-    // Trigger fade-in on next frame
     requestAnimationFrame(() => {
       requestAnimationFrame(() => p.classList.add('visible'));
     });
 
-    // Show quote when settled (after 0.8 s)
+    // Show quote when settled (0.8 s)
     puffinTimeouts.push(setTimeout(showQuote, 800));
 
-    // Send kiss at 13 s
+    // 30% chance of a surprise poop before flying away
+    const willPoop = Math.random() < 0.30;
+    if (willPoop) {
+      puffinTimeouts.push(setTimeout(doPoop, 11500));  // poop at 11.5 s
+    }
+
+    // Kiss at 13 s
     puffinTimeouts.push(setTimeout(sendKiss, 13000));
 
-    // Fly away at 15 s (hide with fade-out)
+    // Fly away at 15 s
     puffinTimeouts.push(setTimeout(hidePuffin, 15000));
   }
 
@@ -467,9 +569,18 @@
   function sendKiss() {
     const h = el.kiss;
     h.classList.remove('hidden', 'flying');
-    void h.offsetWidth; // reflow to restart animation
+    void h.offsetWidth;
     h.classList.add('flying');
     setTimeout(() => { h.classList.add('hidden'); h.classList.remove('flying'); }, 2400);
+  }
+
+  function doPoop() {
+    playFart();
+    const poop = document.createElement('div');
+    poop.textContent = '💩';
+    poop.className   = 'poop-drop';
+    el.puffin.appendChild(poop);
+    setTimeout(() => poop.remove(), 1500);
   }
 
   // =====================================================
@@ -491,6 +602,10 @@
     player.quotesSeenCount++;
     checkBadges();
     savePlayer();
+  }
+
+  function clearLog() {
+    el.logList.innerHTML = '<p class="empty-log">Noch keine Nachrichten...<br>starte einen Timer!</p>';
   }
 
   function addToLog(quote) {
@@ -634,16 +749,13 @@
   function init() {
     loadPlayer();
     shuffleQuotes();
+    generateLeaves();
     initTree();
 
-    // Ring setup
+    // Ring + countdown init
     el.ring.style.strokeDasharray  = CIRCUMFERENCE;
     el.ring.style.strokeDashoffset = 0;
     el.countdown.textContent       = fmt(getInputSecs());
-
-    // Reset milestone flags
-    lastCrackPlayed = false;
-    lastCreakPlayed = false;
 
     checkLevelUp();
     renderXPBar();

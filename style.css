@@ -247,9 +247,9 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
    ===================================================== */
 .puffin-container {
   position: absolute;
-  /* Positioned on the right main branch ~75% down from top */
-  right: 22px;
-  bottom: 148px;
+  /* Sits on right main branch junction (SVG ~164,130 → pixel ~238,138 from top) */
+  right: 68px;
+  bottom: 174px;
   width: 70px;
   z-index: 20;
   opacity: 0;
@@ -326,6 +326,22 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
   0%   { transform: translateX(-50%) scale(1);   opacity: 1;   bottom: 78px; }
   50%  { transform: translateX(-50%) scale(1.6); opacity: 0.85; bottom: 155px; }
   100% { transform: translateX(-50%) scale(0.4); opacity: 0;   bottom: 230px; }
+}
+
+/* Poop drop animation */
+.poop-drop {
+  position: absolute;
+  font-size: 1.3rem;
+  left: 32px;
+  bottom: 2px;
+  z-index: 35;
+  pointer-events: none;
+  animation: poop-fall 1.4s ease-in forwards;
+}
+@keyframes poop-fall {
+  0%   { bottom: 2px;   opacity: 1; transform: rotate(0deg) scale(1); }
+  60%  { opacity: 1; }
+  100% { bottom: -90px; opacity: 0; transform: rotate(25deg) scale(0.7); }
 }
 
 /* =====================================================
