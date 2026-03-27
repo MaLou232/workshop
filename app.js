@@ -108,6 +108,7 @@
     bubble:         $('speech-bubble'),
     quoteText:      $('quote-text'),
     kiss:           $('kiss-heart'),
+    cup:            $('puffin-cup'),
     logList:        $('quote-log-list'),
     levelNum:       $('level-number'),
     levelTitle:     $('level-title'),
@@ -163,6 +164,7 @@
       getAc();
       wireAudioElement('snd-bird');
       wireAudioElement('snd-leaves');
+      wireAudioElement('snd-slurp');
     } catch (e) {}
   }
 
@@ -399,20 +401,21 @@
     timer.puffinShownInInterval = false;
     timer.breakRemaining        = 300; // 5 minutes
 
-    // Cancel puffin fly-away so it stays during break
+    // Reset puffin state so it arrives fresh with bird sound
     clearPuffinTimeouts();
     el.bubble.classList.add('hidden');
+    el.cup.classList.add('hidden');
+    el.puffin.classList.remove('visible');
+    el.puffin.classList.add('hidden');
+    timer.puffinActive = false;
 
     // Show break UI, hide ring
     el.ringWrap.classList.add('hidden');
     el.breakWrap.classList.remove('hidden');
     el.breakDisplay.textContent = fmtMMSS(timer.breakRemaining);
 
-    // Ensure puffin is visible
-    if (el.puffin.classList.contains('hidden')) {
-      showPuffin(true);
-    }
-    showBreakQuote();
+    // Puffin flies in fresh: bird sound → break quote → coffee cup + slurp
+    showPuffin(true);
 
     timer.phase = 'break';
     timer.breakIntervalId = setInterval(breakTick, 1000);
@@ -426,15 +429,31 @@
 
   function endBreak() {
     clearInterval(timer.breakIntervalId);
+    clearPuffinTimeouts();
     timer.phase = 'work';
+
+    // Hide coffee cup and bubble
+    el.cup.classList.add('hidden');
+    el.bubble.classList.add('hidden');
+
+    // Puffin flies away with bird sound
+    playAudio('snd-bird');
+    setTimeout(() => {
+      const b = document.getElementById('snd-bird');
+      if (b) { b.pause(); b.currentTime = 0; }
+    }, 5000);
+
+    // Fade puffin out
+    el.puffin.classList.remove('visible');
+    setTimeout(() => {
+      el.puffin.classList.add('hidden');
+      timer.puffinActive = false;
+    }, 700);
 
     // Hide break UI, show ring
     el.breakWrap.classList.add('hidden');
     el.ringWrap.classList.remove('hidden');
     updateRingUI();
-
-    // Puffin flies away
-    hidePuffin();
 
     // Resume main timer if time remains
     if (timer.remaining > 0) {
@@ -617,7 +636,7 @@
     });
 
     if (!breakMode) {
-      // Normal work visit: quote, poop chance, kiss, fly away after 15 s
+      // Normal work visit: motivation quote, poop chance, kiss, fly away after 15 s
       puffinTimeouts.push(setTimeout(showQuote, 800));
 
       const willPoop = Math.random() < 0.30;
@@ -626,13 +645,23 @@
       }
       puffinTimeouts.push(setTimeout(sendKiss, 13000));
       puffinTimeouts.push(setTimeout(hidePuffin, 15000));
+    } else {
+      // Break mode: show break quote, then pull out coffee cup + slurp sound
+      puffinTimeouts.push(setTimeout(() => {
+        showBreakQuote();
+        puffinTimeouts.push(setTimeout(() => {
+          el.cup.classList.remove('hidden');
+          playAudio('snd-slurp');
+        }, 700));
+      }, 800));
+      // No fly-away scheduled – puffin stays until endBreak()
     }
-    // In breakMode: no fly-away scheduled; puffin stays until endBreak()
   }
 
   function hidePuffin() {
     clearPuffinTimeouts();
     el.bubble.classList.add('hidden');
+    el.cup.classList.add('hidden');
     el.kiss.classList.remove('flying');
     el.kiss.classList.add('hidden');
 

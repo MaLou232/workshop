@@ -309,6 +309,21 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
 }
 .speech-bubble.hidden { display: none; }
 
+/* Coffee cup (held during break) */
+.puffin-cup {
+  position: absolute;
+  bottom: 6px;
+  left: -14px;
+  font-size: 1.5rem;
+  z-index: 22;
+  animation: cup-bounce 1.8s ease-in-out infinite;
+}
+.puffin-cup.hidden { display: none; }
+@keyframes cup-bounce {
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  50%       { transform: translateY(-4px) rotate(5deg); }
+}
+
 /* Kiss heart */
 .kiss-heart {
   position: absolute;
