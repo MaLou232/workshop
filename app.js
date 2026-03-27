@@ -227,11 +227,12 @@
     return hh * 3600 + mm * 60;
   }
 
-  // Main timer display: HH:MM (hours:minutes remaining)
+  // Main timer display: HH:MM:SS
   function fmtHHMM(sec) {
     const h = Math.floor(sec / 3600);
     const m = Math.floor((sec % 3600) / 60);
-    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+    const s = sec % 60;
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
   }
 
   // Break timer display: MM:SS
@@ -636,15 +637,15 @@
     });
 
     if (!breakMode) {
-      // Normal work visit: motivation quote, poop chance, kiss, fly away after 15 s
-      puffinTimeouts.push(setTimeout(showQuote, 800));
-
+      // Normal work visit: quote shows at 0.8s, puffin leaves at 15.8s
+      // → quote is visible for exactly 15 seconds
+      puffinTimeouts.push(setTimeout(showQuote,   800));   // quote appears
       const willPoop = Math.random() < 0.30;
       if (willPoop) {
-        puffinTimeouts.push(setTimeout(doPoop, 11500));
+        puffinTimeouts.push(setTimeout(doPoop,   12300)); // poop at 11.5s after quote
       }
-      puffinTimeouts.push(setTimeout(sendKiss, 13000));
-      puffinTimeouts.push(setTimeout(hidePuffin, 15000));
+      puffinTimeouts.push(setTimeout(sendKiss,   13800)); // kiss at 13s after quote
+      puffinTimeouts.push(setTimeout(hidePuffin, 15800)); // fly away at 15s after quote
     } else {
       // Break mode: show break quote, then pull out coffee cup + slurp sound
       puffinTimeouts.push(setTimeout(() => {

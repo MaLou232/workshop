@@ -192,11 +192,11 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
 }
 #countdown-display {
   position: relative;
-  font-size: 1.9rem;
+  font-size: 1.4rem;
   font-weight: 800;
   color: var(--text);
   font-variant-numeric: tabular-nums;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   z-index: 1;
 }
 
