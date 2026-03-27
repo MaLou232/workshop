@@ -710,7 +710,8 @@
     setTimeout(() => { h.classList.add('hidden'); h.classList.remove('flying'); }, 2400);
   }
 
-  let activePoops = [];
+  let activePoops   = [];
+  let wormTimeouts  = [];
 
   function doPoop() {
     playPoopAmplified();
@@ -727,11 +728,58 @@
     void poop.offsetWidth;
     poop.style.bottom    = '8px';
     poop.style.transform = 'rotate(20deg)';
+
+    // Worm crawls in from the right 3 minutes later to eat the poop
+    const t = setTimeout(() => {
+      if (poop.parentNode) doWorm(poop);
+    }, 180000);
+    wormTimeouts.push(t);
+  }
+
+  function doWorm(poopEl) {
+    const scene  = document.getElementById('tree-scene');
+    const sceneW = scene.offsetWidth;
+
+    const worm = document.createElement('div');
+    worm.className   = 'worm-item';
+    worm.textContent = '🪱';
+    worm.style.bottom = '4px';
+    worm.style.left   = (sceneW + 20) + 'px'; // start off-screen right
+
+    scene.appendChild(worm);
+    void worm.offsetWidth; // force reflow before transition
+
+    // Phase 1: crawl left to poop (~2 s)
+    const targetLeft = sceneW - 72 - 24;
+    worm.style.transition = 'left 2s linear';
+    worm.style.left = targetLeft + 'px';
+
+    setTimeout(() => {
+      // Eating: wiggle + fade poop out
+      worm.classList.add('worm-eating');
+      poopEl.style.transition = 'opacity 0.4s ease';
+      poopEl.style.opacity    = '0';
+      setTimeout(() => {
+        if (poopEl.parentNode) poopEl.remove();
+        activePoops = activePoops.filter(p => p !== poopEl);
+      }, 400);
+
+      setTimeout(() => {
+        worm.classList.remove('worm-eating');
+        // Phase 2: crawl out to the left (~2.5 s)
+        worm.style.transition = 'left 2.5s linear';
+        worm.style.left = '-60px';
+        setTimeout(() => { if (worm.parentNode) worm.remove(); }, 2600);
+      }, 1400);
+    }, 2100);
   }
 
   function clearPoops() {
     activePoops.forEach(p => p.remove());
     activePoops = [];
+    wormTimeouts.forEach(clearTimeout);
+    wormTimeouts = [];
+    document.querySelectorAll('.worm-item').forEach(w => w.remove());
   }
 
   // =====================================================

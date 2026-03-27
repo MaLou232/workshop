@@ -354,6 +354,23 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
               transform 1.1s ease-in;
 }
 
+/* Worm – crawls in from right to eat poop, exits left */
+.worm-item {
+  position: absolute;
+  font-size: 1.4rem;
+  z-index: 14;
+  pointer-events: none;
+}
+@keyframes worm-chomp {
+  0%   { transform: scale(1)    rotate(0deg);   }
+  25%  { transform: scale(1.3)  rotate(-12deg); }
+  75%  { transform: scale(1.3)  rotate(12deg);  }
+  100% { transform: scale(1)    rotate(0deg);   }
+}
+.worm-eating {
+  animation: worm-chomp 0.4s ease-in-out 3;
+}
+
 /* =====================================================
    Right Panel – Quote Log
    ===================================================== */
