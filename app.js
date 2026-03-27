@@ -325,6 +325,7 @@
 
     // Reset tree to bare
     updateTree(0);
+    updateTabTitle();
   }
 
   function tick() {
@@ -341,6 +342,7 @@
     }
 
     updateRingUI();
+    updateTabTitle();
 
     const elapsed  = timer.totalSeconds - timer.remaining;
     const progress = elapsed / timer.totalSeconds;
@@ -418,6 +420,8 @@
     // Puffin flies in fresh: bird sound → break quote → coffee cup + slurp
     showPuffin(true);
 
+    sendNotif('☕ Pause! 5 Minuten für dich, Schneck.', 'Du hast 25 Minuten konzentriert gearbeitet – super gemacht!');
+
     timer.phase = 'break';
     timer.breakIntervalId = setInterval(breakTick, 1000);
   }
@@ -425,6 +429,7 @@
   function breakTick() {
     timer.breakRemaining--;
     el.breakDisplay.textContent = fmtMMSS(timer.breakRemaining);
+    updateTabTitle();
     if (timer.breakRemaining <= 0) endBreak();
   }
 
@@ -456,6 +461,8 @@
     el.ringWrap.classList.remove('hidden');
     updateRingUI();
 
+    sendNotif('💪 Weiter geht\'s, Schneck!', 'Pause vorbei – nächstes 25-Minuten-Intervall startet jetzt.');
+
     // Resume main timer if time remains
     if (timer.remaining > 0) {
       timer.intervalId = setInterval(tick, 1000);
@@ -471,6 +478,8 @@
 
     playPing();
     launchConfetti();
+    sendNotif('🎉 Session abgeschlossen!', 'Mega gemacht, Schneck! Maus ist so stolz auf dich!');
+    updateTabTitle();
     awardXP(50);
     player.completedSessions++;
     checkBadges();
@@ -898,6 +907,31 @@
   }
 
   // =====================================================
+  // NOTIFICATIONS + TAB TITLE
+  // =====================================================
+
+  function requestNotifPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }
+
+  function sendNotif(title, body) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try { new Notification(title, { body, silent: false }); } catch (e) {}
+  }
+
+  function updateTabTitle() {
+    if (timer.phase === 'break') {
+      document.title = `☕ ${fmtMMSS(timer.breakRemaining)} – Pause`;
+    } else if (timer.isRunning) {
+      document.title = `⏱ ${fmtHHMM(timer.remaining)} – Fokuszeit`;
+    } else {
+      document.title = '🌱 Schnecks Fokuszeit';
+    }
+  }
+
+  // =====================================================
   // LOCALSTORAGE
   // =====================================================
 
@@ -971,7 +1005,7 @@
 
     // Button listeners – unlockAudio() on every click so the shared
     // AudioContext is created/resumed within a genuine user gesture.
-    el.startBtn.addEventListener('click',    () => { unlockAudio(); startTimer(); });
+    el.startBtn.addEventListener('click',    () => { unlockAudio(); requestNotifPermission(); startTimer(); });
     el.pauseBtn.addEventListener('click',    () => { unlockAudio(); pauseTimer(); });
     el.resetBtn.addEventListener('click',    () => { unlockAudio(); resetTimer(); });
     el.testSoundBtn.addEventListener('click',() => { unlockAudio(); playPing();  });
