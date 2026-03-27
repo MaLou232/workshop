@@ -30,6 +30,17 @@
     'Maus denkt: Schneck ist heute nicht aufzuhalten!',
   ];
 
+  const BREAK_QUOTES = [
+    'Streck dich kurz, Schneck – Maus macht das auch! 🌿',
+    'Tief durchatmen! Maus schickt dir Ruhewellen. ☁️',
+    'Schau kurz aus dem Fenster, Schneck. Die Welt dreht sich weiter!',
+    'Kurze Denkpause einlegen – das Gehirn dankt es dir, Schneck!',
+    'Maus sagt: Hände schütteln, Schultern lockern – du machst das super!',
+    'Trink einen Schluck Wasser, Schneck. Maus sorgt sich um dich! 💧',
+    'Diese 5 Minuten gehören dir, Schneck. Genieß die Stille!',
+    'Maus flüstert: Augen schließen und kurz träumen, Schneck. ✨',
+  ];
+
   const BADGE_DEFS = [
     { id: 'first',  emoji: '🌱', name: 'Sprössling',    desc: '1. Session',      condition: s => s.completedSessions >= 1  },
     { id: 'five',   emoji: '🌿', name: 'Setzling',      desc: '5 Sessionen',     condition: s => s.completedSessions >= 5  },
@@ -52,11 +63,16 @@
     isRunning:     false,
     isPaused:      false,
     intervalId:    null,
-    puffinShown:   false,   // used for short timers (≤15 min)
+    puffinShown:   false,   // used for short timers (< 25 min)
     puffinActive:  false,   // puffin currently on branch
     lastPuffinAt:  0,       // elapsed seconds when last puffin appeared
     lastTenth:     -1,      // unused, kept for safety
     leavesPlayed:  false,   // rustle sound played once per session
+    phase:              'work',  // 'work' | 'break'
+    intervalElapsed:    0,       // seconds elapsed in current 25-min work block
+    breakRemaining:     0,       // seconds remaining in break
+    breakIntervalId:    null,    // setInterval handle for break tick
+    puffinShownInInterval: false, // puffin appeared in current work interval
   };
 
   let player = {
@@ -76,10 +92,12 @@
 
   const $ = id => document.getElementById(id);
   const el = {
+    hoursInput:     $('input-hours'),
     minutesInput:   $('input-minutes'),
-    secondsInput:   $('input-seconds'),
     inputGroup:     $('input-group'),
     ringWrap:       $('ring-wrap'),
+    breakWrap:      $('break-wrap'),
+    breakDisplay:   $('break-display'),
     startBtn:       $('start-btn'),
     pauseBtn:       $('pause-btn'),
     resetBtn:       $('reset-btn'),
@@ -202,12 +220,20 @@
   // =====================================================
 
   function getInputSecs() {
-    const mm = Math.max(0, parseInt(el.minutesInput.value) || 0);
-    const ss = Math.min(59, Math.max(0, parseInt(el.secondsInput.value) || 0));
-    return mm * 60 + ss;
+    const hh = Math.max(0, parseInt(el.hoursInput.value)   || 0);
+    const mm = Math.min(59, Math.max(0, parseInt(el.minutesInput.value) || 0));
+    return hh * 3600 + mm * 60;
   }
 
-  function fmt(sec) {
+  // Main timer display: HH:MM (hours:minutes remaining)
+  function fmtHHMM(sec) {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    return `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+  }
+
+  // Break timer display: MM:SS
+  function fmtMMSS(sec) {
     const m = Math.floor(sec / 60);
     const s = sec % 60;
     return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
@@ -218,13 +244,16 @@
     if (total <= 0) return;
 
     if (!timer.isPaused) {
-      timer.totalSeconds = total;
-      timer.remaining    = total;
-      timer.puffinShown  = false;
-      timer.puffinActive = false;
-      timer.lastPuffinAt = 0;
-      timer.lastTenth    = -1;
-      timer.leavesPlayed = false;
+      timer.totalSeconds         = total;
+      timer.remaining            = total;
+      timer.puffinShown          = false;
+      timer.puffinActive         = false;
+      timer.lastPuffinAt         = 0;
+      timer.lastTenth            = -1;
+      timer.leavesPlayed         = false;
+      timer.phase                = 'work';
+      timer.intervalElapsed      = 0;
+      timer.puffinShownInInterval = false;
       clearPoops();
       clearLog();
     }
@@ -235,11 +264,12 @@
     // Swap input for ring
     el.inputGroup.style.display  = 'none';
     el.ringWrap.classList.remove('hidden');
+    el.breakWrap.classList.add('hidden');
 
     el.startBtn.disabled     = true;
     el.pauseBtn.disabled     = false;
+    el.hoursInput.disabled   = true;
     el.minutesInput.disabled = true;
-    el.secondsInput.disabled = true;
 
     updateRingUI();
     timer.intervalId = setInterval(tick, 1000);
@@ -256,32 +286,39 @@
 
   function resetTimer() {
     clearInterval(timer.intervalId);
+    clearInterval(timer.breakIntervalId);
     clearPuffinTimeouts();
     hidePuffin();
 
-    timer.isRunning   = false;
-    timer.isPaused    = false;
-    timer.puffinShown  = false;
-    timer.puffinActive = false;
-    timer.lastPuffinAt = 0;
-    timer.lastTenth    = -1;
-    timer.leavesPlayed = false;
-    timer.remaining    = getInputSecs();
+    timer.isRunning            = false;
+    timer.isPaused             = false;
+    timer.puffinShown          = false;
+    timer.puffinActive         = false;
+    timer.lastPuffinAt         = 0;
+    timer.lastTenth            = -1;
+    timer.leavesPlayed         = false;
+    timer.phase                = 'work';
+    timer.intervalElapsed      = 0;
+    timer.breakRemaining       = 0;
+    timer.breakIntervalId      = null;
+    timer.puffinShownInInterval = false;
+    timer.remaining            = getInputSecs();
     clearPoops();
 
-    // Swap ring back to input
+    // Swap ring/break back to input
     el.ringWrap.classList.add('hidden');
+    el.breakWrap.classList.add('hidden');
     el.inputGroup.style.display = '';
 
     el.startBtn.disabled     = false;
     el.startBtn.textContent  = 'Start';
     el.pauseBtn.disabled     = true;
+    el.hoursInput.disabled   = false;
     el.minutesInput.disabled = false;
-    el.secondsInput.disabled = false;
 
     el.ring.style.strokeDashoffset = 0;
     el.ring.style.stroke           = 'var(--blue)';
-    el.countdown.textContent       = fmt(timer.remaining);
+    el.countdown.textContent       = fmtHHMM(timer.remaining);
 
     // Reset tree to bare
     updateTree(0);
@@ -289,6 +326,7 @@
 
   function tick() {
     timer.remaining--;
+    timer.intervalElapsed++;
 
     if (timer.remaining <= 0) {
       timer.remaining = 0;
@@ -304,7 +342,7 @@
     const elapsed  = timer.totalSeconds - timer.remaining;
     const progress = elapsed / timer.totalSeconds;
 
-    // Continuous tree growth
+    // Continuous tree growth (always based on overall progress)
     updateTree(progress);
 
     // XP every 5 minutes
@@ -321,21 +359,25 @@
       }
     }
 
-    // Puffin scheduling
-    if (timer.totalSeconds > 900) {
-      // Long timer (>15 min): appear every 10 minutes
-      if (!timer.puffinActive && elapsed > 0 && (elapsed - timer.lastPuffinAt) >= 600) {
+    // Pomodoro: 25-min work intervals with 5-min breaks
+    if (timer.totalSeconds >= 1500) {
+      // Long timer (≥ 25 min): pomodoro rhythm
+      if (timer.intervalElapsed >= 1500) {
+        startBreak();
+        return; // don't apply further puffin logic
+      }
+      // Puffin at 75% of 25-min interval (after 18:45)
+      if (!timer.puffinShownInInterval && timer.intervalElapsed >= 1125) {
+        timer.puffinShownInInterval = true;
         timer.puffinActive = true;
-        timer.lastPuffinAt = elapsed;
-        showPuffin();
+        showPuffin(false);
       }
     } else {
-      // Short timer: appear once at 75%
+      // Short timer (< 25 min): appear once at 75%
       if (!timer.puffinShown && progress >= 0.75) {
         timer.puffinShown  = true;
         timer.puffinActive = true;
-        timer.lastPuffinAt = elapsed;
-        showPuffin();
+        showPuffin(false);
       }
     }
 
@@ -346,9 +388,58 @@
   }
 
   function updateRingUI() {
-    el.countdown.textContent = fmt(timer.remaining);
+    el.countdown.textContent = fmtHHMM(timer.remaining);
     const progress = (timer.totalSeconds - timer.remaining) / timer.totalSeconds;
     el.ring.style.strokeDashoffset = CIRCUMFERENCE * (1 - progress);
+  }
+
+  function startBreak() {
+    clearInterval(timer.intervalId);
+    timer.intervalElapsed       = 0;
+    timer.puffinShownInInterval = false;
+    timer.breakRemaining        = 300; // 5 minutes
+
+    // Cancel puffin fly-away so it stays during break
+    clearPuffinTimeouts();
+    el.bubble.classList.add('hidden');
+
+    // Show break UI, hide ring
+    el.ringWrap.classList.add('hidden');
+    el.breakWrap.classList.remove('hidden');
+    el.breakDisplay.textContent = fmtMMSS(timer.breakRemaining);
+
+    // Ensure puffin is visible
+    if (el.puffin.classList.contains('hidden')) {
+      showPuffin(true);
+    }
+    showBreakQuote();
+
+    timer.phase = 'break';
+    timer.breakIntervalId = setInterval(breakTick, 1000);
+  }
+
+  function breakTick() {
+    timer.breakRemaining--;
+    el.breakDisplay.textContent = fmtMMSS(timer.breakRemaining);
+    if (timer.breakRemaining <= 0) endBreak();
+  }
+
+  function endBreak() {
+    clearInterval(timer.breakIntervalId);
+    timer.phase = 'work';
+
+    // Hide break UI, show ring
+    el.breakWrap.classList.add('hidden');
+    el.ringWrap.classList.remove('hidden');
+    updateRingUI();
+
+    // Puffin flies away
+    hidePuffin();
+
+    // Resume main timer if time remains
+    if (timer.remaining > 0) {
+      timer.intervalId = setInterval(tick, 1000);
+    }
   }
 
   function onComplete() {
@@ -370,8 +461,8 @@
     el.startBtn.disabled     = false;
     el.startBtn.textContent  = 'Neue Session';
     el.pauseBtn.disabled     = true;
+    el.hoursInput.disabled   = false;
     el.minutesInput.disabled = false;
-    el.secondsInput.disabled = false;
 
     timer.isPaused    = false;
     timer.puffinShown = false;
@@ -510,7 +601,7 @@
     puffinTimeouts = [];
   }
 
-  function showPuffin() {
+  function showPuffin(breakMode = false) {
     clearPuffinTimeouts();
     playAudio('snd-bird');
     // Stop bird sound after 5 s
@@ -525,20 +616,18 @@
       requestAnimationFrame(() => p.classList.add('visible'));
     });
 
-    // Show quote when settled (0.8 s)
-    puffinTimeouts.push(setTimeout(showQuote, 800));
+    if (!breakMode) {
+      // Normal work visit: quote, poop chance, kiss, fly away after 15 s
+      puffinTimeouts.push(setTimeout(showQuote, 800));
 
-    // 30% chance of a surprise poop before flying away
-    const willPoop = Math.random() < 0.30;
-    if (willPoop) {
-      puffinTimeouts.push(setTimeout(doPoop, 11500));  // poop at 11.5 s
+      const willPoop = Math.random() < 0.30;
+      if (willPoop) {
+        puffinTimeouts.push(setTimeout(doPoop, 11500));
+      }
+      puffinTimeouts.push(setTimeout(sendKiss, 13000));
+      puffinTimeouts.push(setTimeout(hidePuffin, 15000));
     }
-
-    // Kiss at 13 s
-    puffinTimeouts.push(setTimeout(sendKiss, 13000));
-
-    // Fly away at 15 s
-    puffinTimeouts.push(setTimeout(hidePuffin, 15000));
+    // In breakMode: no fly-away scheduled; puffin stays until endBreak()
   }
 
   function hidePuffin() {
@@ -635,6 +724,13 @@
     player.quotesSeenCount++;
     checkBadges();
     savePlayer();
+  }
+
+  function showBreakQuote() {
+    const q = BREAK_QUOTES[Math.floor(Math.random() * BREAK_QUOTES.length)];
+    el.quoteText.textContent = q;
+    el.bubble.classList.remove('hidden');
+    addToLog(q);
   }
 
   function clearLog() {
@@ -788,7 +884,7 @@
     // Ring + countdown init
     el.ring.style.strokeDasharray  = CIRCUMFERENCE;
     el.ring.style.strokeDashoffset = 0;
-    el.countdown.textContent       = fmt(getInputSecs());
+    el.countdown.textContent       = fmtHHMM(getInputSecs());
 
     checkLevelUp();
     renderXPBar();
@@ -803,17 +899,20 @@
     el.testSoundBtn.addEventListener('click',() => { unlockAudio(); playPing();  });
 
     // Live countdown preview
+    el.hoursInput.addEventListener('input', () => {
+      const v = parseInt(el.hoursInput.value);
+      if (isNaN(v) || v < 0) el.hoursInput.value = 0;
+      if (v > 23)            el.hoursInput.value = 23;
+      if (!timer.isRunning)  el.countdown.textContent = fmtHHMM(getInputSecs());
+    });
     el.minutesInput.addEventListener('input', () => {
-      if (!timer.isRunning) el.countdown.textContent = fmt(getInputSecs());
+      if (!timer.isRunning) el.countdown.textContent = fmtHHMM(getInputSecs());
     });
-    el.secondsInput.addEventListener('input', () => {
-      if (!timer.isRunning) el.countdown.textContent = fmt(getInputSecs());
-    });
-    el.secondsInput.addEventListener('change', () => {
-      const v = parseInt(el.secondsInput.value);
-      if (isNaN(v) || v < 0) el.secondsInput.value = 0;
-      if (v > 59)            el.secondsInput.value = 59;
-      if (!timer.isRunning)  el.countdown.textContent = fmt(getInputSecs());
+    el.minutesInput.addEventListener('change', () => {
+      const v = parseInt(el.minutesInput.value);
+      if (isNaN(v) || v < 0) el.minutesInput.value = 0;
+      if (v > 59)            el.minutesInput.value = 59;
+      if (!timer.isRunning)  el.countdown.textContent = fmtHHMM(getInputSecs());
     });
   }
 

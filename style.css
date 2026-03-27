@@ -418,6 +418,36 @@ header .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-top: 4px
 #badge-popup-text  { font-size: 0.88rem; font-weight: 600; color: var(--text); }
 
 /* =====================================================
+   Break Timer Card
+   ===================================================== */
+.break-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--yellow-light);
+  border-radius: var(--radius-sm);
+  padding: 14px 24px;
+  width: 100%;
+}
+.break-wrap.hidden { display: none; }
+.break-label {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+.break-display {
+  font-size: 2.6rem;
+  font-weight: 800;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.break-sub {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+/* =====================================================
    Mobile
    ===================================================== */
 @media (max-width: 780px) {
